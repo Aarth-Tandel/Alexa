@@ -1,0 +1,23 @@
+{
+  "name": "alexa",
+  "version": "1.0.0",
+  "description": "Calling alexa from lambda",
+  "main": "index.js",
+  "scripts": {
+    "test": "none"
+  },
+  "repository": {
+    "type": "git",
+    "url": "none"
+  },
+  "keywords": [
+    "none"
+  ],
+  "author": "Aarth Tandel, Suresh Vempalli",
+  "license": "ISC",
+  "devDependencies": {
+    "alexa-sdk": "^1.0.24",
+    "aws-sdk": "^2.178.0",
+    "request": "^2.83.0"
+  }
+}
