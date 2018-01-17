@@ -21,7 +21,7 @@ AWS.config.update({
 });
 const request = require('request');
 
-const config = {};
+const config   = {};
 var FacebookUserId;
 
 
