@@ -21,7 +21,7 @@ AWS.config.update({
 });
 const request = require('request');
 
-const config   = {};
+const config = {};
 var FacebookUserId;
 
 
@@ -402,8 +402,136 @@ function decrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNo
 }
 
 /**
- * Main logic
+ * This function takes user access token and return facebook ID
  */
+function GetFaceBookId(userAccessToken, callback_GetFaceBookId) {
+    /**
+     * create header for GET method 
+     * to get facebook Id from access token
+     * update access token which we get above 
+     */
+    const options = {
+        url: 'https://graph.facebook.com/me?access_token=' + userAccessToken,
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Accept-Charset': 'utf-8'
+        }
+    }
+    request(options, function (err, res, body) {
+        /**
+         * Get facebook from json format
+         */
+        let json = JSON.parse(body);
+        log("FB ID ", json.id);
+        callback_GetFaceBookId(null, json.id);
+    });
+
+}
+
+
+/**
+ * This function takes Facebook ID  and returns the devices that user has access
+ */
+function getDevicesFromUserTable(FacebookUserId,callback_getDevicesFromUserTable){
+    var userTableName = 'aura-mobilehub-1808637480-UserTable';
+    var paramsUserTable = {
+        TableName: userTableName,
+        Limit: 3,
+        ProjectionExpression: "Devices",
+        FilterExpression: "#user_id = :facebook_id",
+        ExpressionAttributeNames: {
+            "#user_id": "UserId",
+        },
+        ExpressionAttributeValues: {
+            ":facebook_id": {
+                "S": "us-east-1:" + FacebookUserId
+            }
+        },
+    };
+    ddb.scan(paramsUserTable, function(err,jsonData){
+        if (err) {
+            console.log("ERROR " + "Unable to scan the user table. " + err);
+            callback_getDevicesFromUserTable(err,err);
+        } else {
+            /**
+             * Scan got success
+             * now take each device get the device details for each device
+             */
+            callback_getDevicesFromUserTable(err,jsonData.Items[0]);
+        }
+    });
+}
+
+
+/**
+ * This function takes device List and returns the nodes for each device that user has access
+ */
+function getNodesFromDeviceTable(deviceList,callback_getNodesFromDeviceTable){
+
+    console.log("getNodesFromDeviceTable deviceList : " + deviceList);
+    //for (var listLen in json_data.Devices.L) {
+                             ////////////////////Calling device table for Things/////////////////////
+        //                     //console.log("check device list data : " + DeviceList.names[listLen].Name);
+        //                     var deviceTableName = 'aura-mobilehub-1808637480-DevicesTable';
+        //                     var paramsDeviceTable = {
+        //                         TableName: deviceTableName,
+        //                         Limit: 3,
+        //                         ProjectionExpression: "Thing,Loads,Room",
+        //                         FilterExpression: "#device_id = :device_number",
+        //                         ExpressionAttributeNames: {
+        //                             "#device_id": "DeviceId",
+        //                         },
+        //                         ExpressionAttributeValues: {
+        //                             ":device_number": {
+        //                                 "S": DeviceList.names[listLen].Name
+        //                             }
+        //                         },
+        //                     };
+        //                     // paramsDeviceTable.ExpressionAttributeValues.S = json_data.Devices.L[listLen].S;
+        //                     //console.log("Check scanning table : "+ JSON.stringify(paramsDeviceTable));
+        //                     ddb.scan(paramsDeviceTable, scanDeviceTable);
+    
+        //                     var loadNames = {};
+        //                     var key_load = "names";
+        //                     loadNames[key_load] = [];
+        //                     var dummyLoadName;
+    
+        //                     function scanDeviceTable(err, data) {
+        //                         if (err) {
+        //                             console.error("Unable to scan the table. Error JSON:", JSON.stringify(err, null, 2));
+        //                         } else {
+    // var userTableName = 'aura-mobilehub-1808637480-UserTable';
+    // var paramsUserTable = {
+    //     TableName: userTableName,
+    //     Limit: 3,
+    //     ProjectionExpression: "Devices",
+    //     FilterExpression: "#user_id = :facebook_id",
+    //     ExpressionAttributeNames: {
+    //         "#user_id": "UserId",
+    //     },
+    //     ExpressionAttributeValues: {
+    //         ":facebook_id": {
+    //             "S": "us-east-1:" + FacebookUserId
+    //         }
+    //     },
+    // };
+    // ddb.scan(paramsUserTable, function(err,jsonData){
+    //     if (err) {
+    //         console.log("ERROR " + "Unable to scan the user table. " + err);
+    //         callback_getDevicesFromUserTable(err,err);
+    //     } else {
+    //         /**
+    //          * Scan got success
+    //          * now take each device get the device details for each device
+    //          */
+    //         callback_getDevicesFromUserTable(err,jsonData.Items[0]);
+    //     }
+    // });
+}
+
+
+
 
 /**
  * This function is invoked when we receive a "Discovery" message from Alexa Smart Home Skill.
@@ -422,345 +550,373 @@ function handleDiscovery(request1, EndReturnFunction) {
 
 
     /**
+     * Print entire request coming from alexa for handel discovery
+     */
+    log("REQUEST ", `Discovery Request: ${JSON.stringify(request1)}`);
+    /**
      * Here we will get user acces token trim that data
      */
-    log('DEBUG', `Discovery Request: ${JSON.stringify(request1)}`);
     const userAccessToken = request1.directive.payload.scope.token.trim();
     /**
      * print access token here
      */
-    log("HTTP A", userAccessToken);
+    log("TOKEN ", userAccessToken);
 
-    /**
-     * create header for GET method 
-     * to get facebook Id from access token
-     * update access token which we get above 
-     */
 
-    const options = {
-        url: 'https://graph.facebook.com/me?access_token=' + userAccessToken,
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'Accept-Charset': 'utf-8'
+
+    GetFaceBookId(userAccessToken, function (err, FacebookUserId) {
+        if (err) {
+            console.log("ERROR FB ID  " + " ERROR Check facebook id");
+        } else {
+            /**
+             * Getting facebook id is success now do next stuff
+             */
+            console.log("FB ID >> " + FacebookUserId);
+            if (typeof FacebookUserId !== 'undefined' && FacebookUserId) {
+
+                getDevicesFromUserTable(FacebookUserId,function(err,deviceArrayList){
+                    if(err){
+                         console.log("ERROR : "+"getDevicesFromUserTable");
+                    }else{
+                        /**
+                         * getting device list from user table is success now do next stuff
+                         */
+                        console.log("deviceArrayList " + JSON.stringify(deviceArrayList));
+                        getNodesFromDeviceTable(deviceArrayList.Devices.L,function(err,data){
+                              if(err){
+                                 console.log("ERROR : "+"getNodesFromDeviceTable");
+                              }else{
+                                 console.log("getNodesFromDeviceTable " + JSON.stringify(data));
+                              }
+                        });
+                       
+
+                    }
+                });
+            } else {
+                /**
+                 * Handel facebook error here
+                 */
+            }
         }
-    }
+    });
+
 
     /**
      * call request module to get facebook id
      * if success then only call dynamoDB functions
      */
-    request(options, function (err, res, body) {
+    // request(options, function (err, res, body) {
 
-        /**
-         * Get facebook from json format
-         */
-        let json = JSON.parse(body);
-        FacebookUserId = json.id;
-        log("FB ID ", FacebookUserId);
+    //     /**
+    //      * Get facebook from json format
+    //      */
+    //     let json = JSON.parse(body);
+    //     FacebookUserId = json.id;
+    //     log("FB ID ", FacebookUserId);
 
-        var FlagResultComplete = 0;
-        if (typeof FacebookUserId !== 'undefined' && FacebookUserId) {
-            /**
-             * Facebook request got success
-             * frame dynamodb table scan header  paramsUserTable to reuest user devices
-             */
-            var userTableName = 'aura-mobilehub-1808637480-UserTable';
-            var paramsUserTable = {
-                TableName: userTableName,
-                Limit: 3,
-                ProjectionExpression: "Devices",
-                FilterExpression: "#user_id = :facebook_id",
-                ExpressionAttributeNames: {
-                    "#user_id": "UserId",
-                },
-                ExpressionAttributeValues: {
-                    ":facebook_id": {
-                        "S": "us-east-1:" + FacebookUserId
-                    }
-                },
-            };
+    //     var FlagResultComplete = 0;
+    //     if (typeof FacebookUserId !== 'undefined' && FacebookUserId) {
+    //         /**
+    //          * Facebook request got success
+    //          * frame dynamodb table scan header  paramsUserTable to reuest user devices
+    //          */
+    //         var userTableName = 'aura-mobilehub-1808637480-UserTable';
+    //         var paramsUserTable = {
+    //             TableName: userTableName,
+    //             Limit: 3,
+    //             ProjectionExpression: "Devices",
+    //             FilterExpression: "#user_id = :facebook_id",
+    //             ExpressionAttributeNames: {
+    //                 "#user_id": "UserId",
+    //             },
+    //             ExpressionAttributeValues: {
+    //                 ":facebook_id": {
+    //                     "S": "us-east-1:" + FacebookUserId
+    //                 }
+    //             },
+    //         };
 
-            /**
-             * call scan function
-             */
-            ddb.scan(paramsUserTable, scanUserTable);
+    //         /**
+    //          * call scan function
+    //          */
+    //         ddb.scan(paramsUserTable, scanUserTable);
 
-            /**
-             * scan user table function 
-             * on success it will return all the device related to user
-             *  
-             */
-            function scanUserTable(err, data) {
-                if (err) {
-                    console.error("Unable to scan the table. Error JSON:", JSON.stringify(err, null, 2));
-                } else {
-                    /**
-                     * Scan got success
-                     * now take each device get the device details for each device
-                     */
-                    console.log("User Device Table Scan succeeded.");
-                    var json_data = data.Items[0];
+    //         /**
+    //          * scan user table function 
+    //          * on success it will return all the device related to user
+    //          *  
+    //          */
+    //         function scanUserTable(err, data) {
+    //             if (err) {
+    //                 console.error("Unable to scan the table. Error JSON:", JSON.stringify(err, null, 2));
+    //             } else {
+    //                 /**
+    //                  * Scan got success
+    //                  * now take each device get the device details for each device
+    //                  */
+    //                 console.log("User Device Table Scan succeeded.");
+    //                 var json_data = data.Items[0];
 
-                    // console.log("Check result : " + JSON.stringify(i));
+    //                 // console.log("Check result : " + JSON.stringify(i));
 
-                    var DeviceList = {};
-                    var key_name = "names";
-                    DeviceList[key_name] = [];
-                    for (var len in json_data.Devices.L) {
-                        //console.log("Data from the table : " + listLen + " >> " + json_data.Devices.L[listLen].S);
-                        var d_name = {
-                            Name: json_data.Devices.L[len].S
-                        };
-                        DeviceList[key_name].push(d_name);
-                    }
+    //                 var DeviceList = {};
+    //                 var key_name = "names";
+    //                 DeviceList[key_name] = [];
+    //                 for (var len in json_data.Devices.L) {
+    //                     //console.log("Data from the table : " + listLen + " >> " + json_data.Devices.L[listLen].S);
+    //                     var d_name = {
+    //                         Name: json_data.Devices.L[len].S
+    //                     };
+    //                     DeviceList[key_name].push(d_name);
+    //                 }
 
-                    for (var listLen in json_data.Devices.L) {
-                        ////////////////////Calling device table for Things/////////////////////
-                        //console.log("check device list data : " + DeviceList.names[listLen].Name);
-                        var deviceTableName = 'aura-mobilehub-1808637480-DevicesTable';
-                        var paramsDeviceTable = {
-                            TableName: deviceTableName,
-                            Limit: 3,
-                            ProjectionExpression: "Thing,Loads,Room",
-                            FilterExpression: "#device_id = :device_number",
-                            ExpressionAttributeNames: {
-                                "#device_id": "DeviceId",
-                            },
-                            ExpressionAttributeValues: {
-                                ":device_number": {
-                                    "S": DeviceList.names[listLen].Name
-                                }
-                            },
-                        };
-                        // paramsDeviceTable.ExpressionAttributeValues.S = json_data.Devices.L[listLen].S;
-                        //console.log("Check scanning table : "+ JSON.stringify(paramsDeviceTable));
-                        ddb.scan(paramsDeviceTable, scanDeviceTable);
+    //                 for (var listLen in json_data.Devices.L) {
+    //                     ////////////////////Calling device table for Things/////////////////////
+    //                     //console.log("check device list data : " + DeviceList.names[listLen].Name);
+    //                     var deviceTableName = 'aura-mobilehub-1808637480-DevicesTable';
+    //                     var paramsDeviceTable = {
+    //                         TableName: deviceTableName,
+    //                         Limit: 3,
+    //                         ProjectionExpression: "Thing,Loads,Room",
+    //                         FilterExpression: "#device_id = :device_number",
+    //                         ExpressionAttributeNames: {
+    //                             "#device_id": "DeviceId",
+    //                         },
+    //                         ExpressionAttributeValues: {
+    //                             ":device_number": {
+    //                                 "S": DeviceList.names[listLen].Name
+    //                             }
+    //                         },
+    //                     };
+    //                     // paramsDeviceTable.ExpressionAttributeValues.S = json_data.Devices.L[listLen].S;
+    //                     //console.log("Check scanning table : "+ JSON.stringify(paramsDeviceTable));
+    //                     ddb.scan(paramsDeviceTable, scanDeviceTable);
 
-                        var loadNames = {};
-                        var key_load = "names";
-                        loadNames[key_load] = [];
-                        var dummyLoadName;
+    //                     var loadNames = {};
+    //                     var key_load = "names";
+    //                     loadNames[key_load] = [];
+    //                     var dummyLoadName;
 
-                        function scanDeviceTable(err, data) {
-                            if (err) {
-                                console.error("Unable to scan the table. Error JSON:", JSON.stringify(err, null, 2));
-                            } else {
-                                //console.log("Device Table Scan succeeded.");
-                                var i = data.Items[0];
-                                //console.log("printing another data : " + DeviceList.names[listLen].Name);
-                                dummyLoadName = {
-                                    Name: DeviceList.names[listLen].Name,
-                                    Thing: i.Thing.S,
-                                    Room: i.Room.S,
-                                    Loads: [{
-                                        LoadName: i.Loads.L[0].S
-                                    },
-                                    {
-                                        LoadName: i.Loads.L[1].S
-                                    },
-                                    {
-                                        LoadName: i.Loads.L[2].S
-                                    },
-                                    {
-                                        LoadName: i.Loads.L[3].S
-                                    }
-                                    ]
-                                };
-                                loadNames[key_load].push(dummyLoadName);
-                                FlagResultComplete = FlagResultComplete + 1;
-                                console.log("checking for end results : " + FlagResultComplete + " " + json_data.Devices.L.length);
-                                if (FlagResultComplete == json_data.Devices.L.length) {
+    //                     function scanDeviceTable(err, data) {
+    //                         if (err) {
+    //                             console.error("Unable to scan the table. Error JSON:", JSON.stringify(err, null, 2));
+    //                         } else {
+    //                             //console.log("Device Table Scan succeeded.");
+    //                             var i = data.Items[0];
+    //                             //console.log("printing another data : " + DeviceList.names[listLen].Name);
+    //                             dummyLoadName = {
+    //                                 Name: DeviceList.names[listLen].Name,
+    //                                 Thing: i.Thing.S,
+    //                                 Room: i.Room.S,
+    //                                 Loads: [{
+    //                                     LoadName: i.Loads.L[0].S
+    //                                 },
+    //                                 {
+    //                                     LoadName: i.Loads.L[1].S
+    //                                 },
+    //                                 {
+    //                                     LoadName: i.Loads.L[2].S
+    //                                 },
+    //                                 {
+    //                                     LoadName: i.Loads.L[3].S
+    //                                 }
+    //                                 ]
+    //                             };
+    //                             loadNames[key_load].push(dummyLoadName);
+    //                             FlagResultComplete = FlagResultComplete + 1;
+    //                             console.log("checking for end results : " + FlagResultComplete + " " + json_data.Devices.L.length);
+    //                             if (FlagResultComplete == json_data.Devices.L.length) {
 
-                                    var k = 0,
-                                        l = 0;
-                                    for (k = 0; k < FlagResultComplete; k++) {
-                                        for (l = 0; l < 4; l++) {
-                                            if (l != 3) {
-                                                var dummy_device_list = {
-                                                    endpointId: loadNames.names[k].Name + "_" + loadNames.names[k].Thing + "_" + loadNames.names[k].Loads[l].LoadName,
-                                                    manufacturerName: 'wozart',
-                                                    modelName: 'Aura',
-                                                    friendlyName: loadNames.names[k].Room + " " + loadNames.names[k].Loads[l].LoadName,
-                                                    description: 'A node for control and change brightness for  lights or fans',
-                                                    displayCategories: [
-                                                        'LIGHT'
-                                                    ],
-                                                    cookie: {
-                                                        AuraName: loadNames.names[k].Name,
-                                                        AuraThing: loadNames.names[k].Thing,
-                                                        AuraLoad: loadNames.names[k].Loads[l].LoadName,
-                                                        AuraNodeIndex: l + 1,
-                                                        AuraType: "LIGHT"
-                                                    },
-                                                    capabilities: [
+    //                                 var k = 0,
+    //                                     l = 0;
+    //                                 for (k = 0; k < FlagResultComplete; k++) {
+    //                                     for (l = 0; l < 4; l++) {
+    //                                         if (l != 3) {
+    //                                             var dummy_device_list = {
+    //                                                 endpointId: loadNames.names[k].Name + "_" + loadNames.names[k].Thing + "_" + loadNames.names[k].Loads[l].LoadName,
+    //                                                 manufacturerName: 'wozart',
+    //                                                 modelName: 'Aura',
+    //                                                 friendlyName: loadNames.names[k].Room + " " + loadNames.names[k].Loads[l].LoadName,
+    //                                                 description: 'A node for control and change brightness for  lights or fans',
+    //                                                 displayCategories: [
+    //                                                     'LIGHT'
+    //                                                 ],
+    //                                                 cookie: {
+    //                                                     AuraName: loadNames.names[k].Name,
+    //                                                     AuraThing: loadNames.names[k].Thing,
+    //                                                     AuraLoad: loadNames.names[k].Loads[l].LoadName,
+    //                                                     AuraNodeIndex: l + 1,
+    //                                                     AuraType: "LIGHT"
+    //                                                 },
+    //                                                 capabilities: [
 
-                                                        {
-                                                            type: "AlexaInterface",
-                                                            interface: "Alexa.EndpointHealth",
-                                                            version: "3",
-                                                            properties: {
-                                                                supported: [
-                                                                    {
-                                                                        name: "connectivity"
-                                                                    }
-                                                                ],
-                                                                proactivelyReported: true,
-                                                                retrievable: true
-                                                            }
-                                                        },
-                                                        {
-                                                            type: 'AlexaInterface',
-                                                            interface: 'Alexa',
-                                                            version: '3'
-                                                        },
-                                                        {
-                                                            type: 'AlexaInterface',
-                                                            interface: 'Alexa.PowerController',
-                                                            version: '3',
-                                                            properties: {
-                                                                supported: [{
-                                                                    name: 'powerState'
-                                                                }],
-                                                                proactivelyReported: true,
-                                                                retrievable: true
-                                                            }
-                                                        },
-                                                        {
-                                                            type: "AlexaInterface",
-                                                            interface: "Alexa.PowerLevelController",
-                                                            version: "3",
-                                                            properties: {
-                                                                supported: [
-                                                                    {
-                                                                        name: "powerLevel"
-                                                                    }
-                                                                ],
-                                                                proactivelyReported: true,
-                                                                retrievable: true
-                                                            }
-                                                        },
-                                                        {
-                                                            type: "AlexaInterface",
-                                                            interface: "Alexa.PercentageController",
-                                                            version: "3",
-                                                            properties: {
-                                                                supported: [
-                                                                    {
-                                                                        name: "percentage"
-                                                                    }
-                                                                ],
-                                                                proactivelyReported: true,
-                                                                retrievable: true
-                                                            }
-                                                        },
-                                                        {
-                                                            type: 'AlexaInterface',
-                                                            interface: 'Alexa.BrightnessController',
-                                                            version: '3',
-                                                            properties: {
-                                                                supported: [{
-                                                                    name: 'brightness'
-                                                                }],
-                                                                proactivelyReported: true,
-                                                                retrievable: true
-                                                            }
-                                                        }
-                                                    ]
+    //                                                     {
+    //                                                         type: "AlexaInterface",
+    //                                                         interface: "Alexa.EndpointHealth",
+    //                                                         version: "3",
+    //                                                         properties: {
+    //                                                             supported: [
+    //                                                                 {
+    //                                                                     name: "connectivity"
+    //                                                                 }
+    //                                                             ],
+    //                                                             proactivelyReported: true,
+    //                                                             retrievable: true
+    //                                                         }
+    //                                                     },
+    //                                                     {
+    //                                                         type: 'AlexaInterface',
+    //                                                         interface: 'Alexa',
+    //                                                         version: '3'
+    //                                                     },
+    //                                                     {
+    //                                                         type: 'AlexaInterface',
+    //                                                         interface: 'Alexa.PowerController',
+    //                                                         version: '3',
+    //                                                         properties: {
+    //                                                             supported: [{
+    //                                                                 name: 'powerState'
+    //                                                             }],
+    //                                                             proactivelyReported: true,
+    //                                                             retrievable: true
+    //                                                         }
+    //                                                     },
+    //                                                     {
+    //                                                         type: "AlexaInterface",
+    //                                                         interface: "Alexa.PowerLevelController",
+    //                                                         version: "3",
+    //                                                         properties: {
+    //                                                             supported: [
+    //                                                                 {
+    //                                                                     name: "powerLevel"
+    //                                                                 }
+    //                                                             ],
+    //                                                             proactivelyReported: true,
+    //                                                             retrievable: true
+    //                                                         }
+    //                                                     },
+    //                                                     {
+    //                                                         type: "AlexaInterface",
+    //                                                         interface: "Alexa.PercentageController",
+    //                                                         version: "3",
+    //                                                         properties: {
+    //                                                             supported: [
+    //                                                                 {
+    //                                                                     name: "percentage"
+    //                                                                 }
+    //                                                             ],
+    //                                                             proactivelyReported: true,
+    //                                                             retrievable: true
+    //                                                         }
+    //                                                     },
+    //                                                     {
+    //                                                         type: 'AlexaInterface',
+    //                                                         interface: 'Alexa.BrightnessController',
+    //                                                         version: '3',
+    //                                                         properties: {
+    //                                                             supported: [{
+    //                                                                 name: 'brightness'
+    //                                                             }],
+    //                                                             proactivelyReported: true,
+    //                                                             retrievable: true
+    //                                                         }
+    //                                                     }
+    //                                                 ]
 
-                                                };
-                                            } else {
-                                                var dummy_device_list = {
-                                                    endpointId: loadNames.names[k].Name + "_" + loadNames.names[k].Thing + "_" + loadNames.names[k].Loads[l].LoadName,
-                                                    manufacturerName: 'wozart',
-                                                    modelName: 'Aura',
-                                                    friendlyName: loadNames.names[k].Room + " " + loadNames.names[k].Loads[l].LoadName,
-                                                    description: 'A node for control switches',
-                                                    displayCategories: [
-                                                        'SWITCH'
-                                                    ],
-                                                    cookie: {
-                                                        AuraName: loadNames.names[k].Name,
-                                                        AuraThing: loadNames.names[k].Thing,
-                                                        AuraLoad: loadNames.names[k].Loads[l].LoadName,
-                                                        AuraNodeIndex: l + 1,
-                                                        AuraType: "SWITCH"
-                                                    },
-                                                    capabilities: [
+    //                                             };
+    //                                         } else {
+    //                                             var dummy_device_list = {
+    //                                                 endpointId: loadNames.names[k].Name + "_" + loadNames.names[k].Thing + "_" + loadNames.names[k].Loads[l].LoadName,
+    //                                                 manufacturerName: 'wozart',
+    //                                                 modelName: 'Aura',
+    //                                                 friendlyName: loadNames.names[k].Room + " " + loadNames.names[k].Loads[l].LoadName,
+    //                                                 description: 'A node for control switches',
+    //                                                 displayCategories: [
+    //                                                     'SWITCH'
+    //                                                 ],
+    //                                                 cookie: {
+    //                                                     AuraName: loadNames.names[k].Name,
+    //                                                     AuraThing: loadNames.names[k].Thing,
+    //                                                     AuraLoad: loadNames.names[k].Loads[l].LoadName,
+    //                                                     AuraNodeIndex: l + 1,
+    //                                                     AuraType: "SWITCH"
+    //                                                 },
+    //                                                 capabilities: [
 
-                                                        {
-                                                            type: "AlexaInterface",
-                                                            interface: "Alexa.EndpointHealth",
-                                                            version: "3",
-                                                            properties: {
-                                                                supported: [
-                                                                    {
-                                                                        name: "connectivity"
-                                                                    }
-                                                                ],
-                                                                proactivelyReported: true,
-                                                                retrievable: true
-                                                            }
-                                                        },
-                                                        {
-                                                            type: 'AlexaInterface',
-                                                            interface: 'Alexa',
-                                                            version: '3'
-                                                        },
-                                                        {
-                                                            type: 'AlexaInterface',
-                                                            interface: 'Alexa.PowerController',
-                                                            version: '3',
-                                                            properties: {
-                                                                supported: [{
-                                                                    name: 'powerState'
-                                                                }],
-                                                                proactivelyReported: true,
-                                                                retrievable: true
-                                                            }
-                                                        }
-                                                    ]
+    //                                                     {
+    //                                                         type: "AlexaInterface",
+    //                                                         interface: "Alexa.EndpointHealth",
+    //                                                         version: "3",
+    //                                                         properties: {
+    //                                                             supported: [
+    //                                                                 {
+    //                                                                     name: "connectivity"
+    //                                                                 }
+    //                                                             ],
+    //                                                             proactivelyReported: true,
+    //                                                             retrievable: true
+    //                                                         }
+    //                                                     },
+    //                                                     {
+    //                                                         type: 'AlexaInterface',
+    //                                                         interface: 'Alexa',
+    //                                                         version: '3'
+    //                                                     },
+    //                                                     {
+    //                                                         type: 'AlexaInterface',
+    //                                                         interface: 'Alexa.PowerController',
+    //                                                         version: '3',
+    //                                                         properties: {
+    //                                                             supported: [{
+    //                                                                 name: 'powerState'
+    //                                                             }],
+    //                                                             proactivelyReported: true,
+    //                                                             retrievable: true
+    //                                                         }
+    //                                                     }
+    //                                                 ]
 
-                                                };
-                                            }
+    //                                             };
+    //                                         }
 
-                                            UserDeviceList[key_user_device].push(dummy_device_list);
-                                        }
+    //                                         UserDeviceList[key_user_device].push(dummy_device_list);
+    //                                     }
 
-                                    }
+    //                                 }
 
-                                    //console.log("Check UserDEvice list " + JSON.stringify(UserDeviceList));
-                                    const response = {
-                                        event: {
-                                            header: {
-                                                messageId: generateMessageID(),
-                                                name: 'Discover.Response',
-                                                namespace: 'Alexa.Discovery',
-                                                payloadVersion: '3',
-                                            },
-                                            payload: {
-                                                endpoints: UserDeviceList.devices,
+    //                                 //console.log("Check UserDEvice list " + JSON.stringify(UserDeviceList));
+    //                                 const response = {
+    //                                     event: {
+    //                                         header: {
+    //                                             messageId: generateMessageID(),
+    //                                             name: 'Discover.Response',
+    //                                             namespace: 'Alexa.Discovery',
+    //                                             payloadVersion: '3',
+    //                                         },
+    //                                         payload: {
+    //                                             endpoints: UserDeviceList.devices,
 
-                                            },
-                                        }
-                                    };
+    //                                         },
+    //                                     }
+    //                                 };
 
 
 
-                                    EndReturnFunction(null, response);
-                                    //return UserDeviceList;
-                                }
-                            }
-                        }
-                        ////////////////////End of Calling device table for Things/////////////////////
-                    }
-                }
-            }
-            return true;
-        } else {
-            return false
-        }
-    });
+    //                                 EndReturnFunction(null, response);
+    //                                 //return UserDeviceList;
+    //                             }
+    //                         }
+    //                     }
+    //                     ////////////////////End of Calling device table for Things/////////////////////
+    //                 }
+    //             }
+    //         }
+    //         return true;
+    //     } else {
+    //         return false
+    //     }
+    // });
 
 
     console.log("End Of The Code Here ");
