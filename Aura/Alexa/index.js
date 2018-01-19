@@ -216,6 +216,14 @@ function generateContoleResponse(value, auraType, currentDimmerValue, payload, e
             context: {
                 properties: [
                     {
+                        namespace: "Alexa.BrightnessController",
+                        name: "brightness",
+                        value: currentDimmerValue,
+                        timeOfSample: "2017-02-03T16:20:50.52Z",
+                        uncertaintyInMilliseconds: 500
+                    }
+                    , 
+                    {
                         namespace: "Alexa.PowerController",
                         name: "powerState",
                         value: value,
@@ -235,15 +243,7 @@ function generateContoleResponse(value, auraType, currentDimmerValue, payload, e
                         value: currentDimmerValue,
                         timeOfSample: "2017-02-03T16:20:50.52Z",
                         uncertaintyInMilliseconds: 500
-                    },
-                    {
-                        namespace: "Alexa.BrightnessController",
-                        name: "brightness",
-                        value: currentDimmerValue,
-                        timeOfSample: "2017-02-03T16:20:50.52Z",
-                        uncertaintyInMilliseconds: 500
                     }
-
                 ]
             },
             event: {
@@ -361,10 +361,16 @@ function isDeviceOnline(applianceId) {
 
 function turnOn(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex) {
 
-    console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
+    console.log("[TURN ON ]  auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName + " auraNodeIndex " + auraNodeIndex);
     var controleType = 1;
     var controleState = 1;
-    updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controleState);
+    updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controleState, function (err, data) {
+        if (err) {
+
+        } else {
+
+        }
+    });
     return generateResponse("Alexa.PowerController", "powerState", "ON", {}, "Response", "appliance-001");
 }
 
@@ -372,7 +378,13 @@ function turnOff(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex) {
     console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
     var controleType = 1;
     var controleState = 0;
-    updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controleState);
+    updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controleState, function (err, data) {
+        if (err) {
+
+        } else {
+
+        }
+    });
     return generateResponse("Alexa.PowerController", "powerState", "OFF", {}, "Response", "appliance-001");
 }
 
@@ -380,9 +392,47 @@ function setBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeInde
     console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
     var controleType = 2;
     var controlDim = delta;
-    updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controlDim);
+    var controleState = 1;
+    updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controlDim, function (err, data) {
+        if (err) {
+
+        } else {
+
+        }
+    });
     // return generateResponse("Alexa.BrightnessController", "brightness", controlDim, {}, "Response", "appliance-001");
-    return generateContoleResponse(value, auraType, currentDimmerValue, payload, endpoint_id);
+    var auraType = "LIGHT";
+    if (auraNodeIndex != 3) {
+        auraType = "LIGHT";
+    } else {
+        auraType = "SWITCH";
+    }
+    return generateContoleResponse(controleState, auraType, controlDim, {}, "appliance-001");
+}
+
+function AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta) {
+    console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
+    var controleType = 3;
+    var controlDim = delta;
+    var controleState = 1;
+    updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controlDim, function (err, data) {
+        if (err) {
+            console.log("ERROR on AdjustBrightness");
+        } else {
+            var auraType = "LIGHT";
+            if (auraNodeIndex != 3) {
+                auraType = "LIGHT";
+            } else {
+                auraType = "SWITCH";
+            }
+            console.log("SUCCESS on AdjustBrightness : " + data + " " + JSON.stringify(generateContoleResponse(controleState, auraType, data, {}, "appliance-001")));
+
+            return generateContoleResponse(controleState, auraType, data, {}, "appliance-001");
+        }
+
+    });
+    // return generateResponse("Alexa.BrightnessController", "brightness", controlDim, {}, "Response", "appliance-001");
+
 }
 
 function incrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta) {
@@ -423,17 +473,15 @@ function GetFaceBookId(userAccessToken, callback_GetFaceBookId) {
          * Get facebook from json format
          */
         let json = JSON.parse(body);
-        log("FB ID ", json.id);
+        //log("FB ID ", json.id);
         callback_GetFaceBookId(null, json.id);
     });
 
 }
-
-
 /**
  * This function takes Facebook ID  and returns the devices that user has access
  */
-function getDevicesFromUserTable(FacebookUserId,callback_getDevicesFromUserTable){
+function getDevicesFromUserTable(FacebookUserId, callback_getDevicesFromUserTable) {
     var userTableName = 'aura-mobilehub-1808637480-UserTable';
     var paramsUserTable = {
         TableName: userTableName,
@@ -449,89 +497,232 @@ function getDevicesFromUserTable(FacebookUserId,callback_getDevicesFromUserTable
             }
         },
     };
-    ddb.scan(paramsUserTable, function(err,jsonData){
+    ddb.scan(paramsUserTable, function (err, jsonData) {
         if (err) {
             console.log("ERROR " + "Unable to scan the user table. " + err);
-            callback_getDevicesFromUserTable(err,err);
+            callback_getDevicesFromUserTable(err, err);
         } else {
             /**
              * Scan got success
              * now take each device get the device details for each device
              */
-            callback_getDevicesFromUserTable(err,jsonData.Items[0]);
+            callback_getDevicesFromUserTable(err, jsonData.Items[0]);
         }
     });
 }
-
-
 /**
  * This function takes device List and returns the nodes for each device that user has access
  */
-function getNodesFromDeviceTable(deviceList,callback_getNodesFromDeviceTable){
+function getNodesFromDeviceTable(deviceList, callback_getNodesFromDeviceTable) {
 
-    console.log("getNodesFromDeviceTable deviceList : " + deviceList);
-    //for (var listLen in json_data.Devices.L) {
-                             ////////////////////Calling device table for Things/////////////////////
-        //                     //console.log("check device list data : " + DeviceList.names[listLen].Name);
-        //                     var deviceTableName = 'aura-mobilehub-1808637480-DevicesTable';
-        //                     var paramsDeviceTable = {
-        //                         TableName: deviceTableName,
-        //                         Limit: 3,
-        //                         ProjectionExpression: "Thing,Loads,Room",
-        //                         FilterExpression: "#device_id = :device_number",
-        //                         ExpressionAttributeNames: {
-        //                             "#device_id": "DeviceId",
-        //                         },
-        //                         ExpressionAttributeValues: {
-        //                             ":device_number": {
-        //                                 "S": DeviceList.names[listLen].Name
-        //                             }
-        //                         },
-        //                     };
-        //                     // paramsDeviceTable.ExpressionAttributeValues.S = json_data.Devices.L[listLen].S;
-        //                     //console.log("Check scanning table : "+ JSON.stringify(paramsDeviceTable));
-        //                     ddb.scan(paramsDeviceTable, scanDeviceTable);
-    
-        //                     var loadNames = {};
-        //                     var key_load = "names";
-        //                     loadNames[key_load] = [];
-        //                     var dummyLoadName;
-    
-        //                     function scanDeviceTable(err, data) {
-        //                         if (err) {
-        //                             console.error("Unable to scan the table. Error JSON:", JSON.stringify(err, null, 2));
-        //                         } else {
-    // var userTableName = 'aura-mobilehub-1808637480-UserTable';
-    // var paramsUserTable = {
-    //     TableName: userTableName,
-    //     Limit: 3,
-    //     ProjectionExpression: "Devices",
-    //     FilterExpression: "#user_id = :facebook_id",
-    //     ExpressionAttributeNames: {
-    //         "#user_id": "UserId",
-    //     },
-    //     ExpressionAttributeValues: {
-    //         ":facebook_id": {
-    //             "S": "us-east-1:" + FacebookUserId
-    //         }
-    //     },
-    // };
-    // ddb.scan(paramsUserTable, function(err,jsonData){
-    //     if (err) {
-    //         console.log("ERROR " + "Unable to scan the user table. " + err);
-    //         callback_getDevicesFromUserTable(err,err);
-    //     } else {
-    //         /**
-    //          * Scan got success
-    //          * now take each device get the device details for each device
-    //          */
-    //         callback_getDevicesFromUserTable(err,jsonData.Items[0]);
-    //     }
-    // });
+
+    //console.log("getNodesFromDeviceTable deviceList : " + JSON.stringify(deviceList));
+    //[{"S":"96500E"},{"S":"96500E"},{"S":"96500E"},{"S":"96500E"}]
+    var DeviceNodeInfoList = {};
+    var key_name = "info";
+    DeviceNodeInfoList[key_name] = [];
+    var resultCount = 0;
+    for (var listLen in deviceList) {
+        //console.log("FOR LOOP check device list data : " + deviceList[listLen].S);
+        var deviceTableName = 'aura-mobilehub-1808637480-DevicesTable';
+        var paramsDeviceTable = {
+            TableName: deviceTableName,
+            Limit: 3,
+            ProjectionExpression: "Thing,Loads,Room",
+            FilterExpression: "#device_id = :device_number",
+            ExpressionAttributeNames: {
+                "#device_id": "DeviceId",
+            },
+            ExpressionAttributeValues: {
+                ":device_number": {
+                    "S": deviceList[listLen].S
+                }
+            },
+        };
+        ddb.scan(paramsDeviceTable, function (err, data) {
+            if (err) {
+                console.error("Unable to scan the paramsDeviceTable. Error JSON:", JSON.stringify(err, null, 2));
+            } else {
+                //console.log("DEVICE INFO DATA : " + JSON.stringify(data));
+                for (var nodeLen in data.Items[0].Loads.L) {
+                    if (nodeLen != 3) {
+                        var lightNodeInfo = createJsonForLight(deviceList[resultCount].S, data.Items[0].Thing.S, data.Items[0].Room.S, data.Items[0].Loads.L[nodeLen].S, nodeLen);
+                        DeviceNodeInfoList[key_name].push(lightNodeInfo);
+                    } else {
+                        var switchNodeInfo = createJsonForSwitch(deviceList[resultCount].S, data.Items[0].Thing.S, data.Items[0].Room.S, data.Items[0].Loads.L[nodeLen].S, nodeLen);
+                        DeviceNodeInfoList[key_name].push(switchNodeInfo);
+                    }
+                }
+                resultCount = resultCount + 1;
+                if (deviceList.length == resultCount) {
+                    // console.log("DEVICE NODE INFO : " + JSON.stringify(DeviceNodeInfoList));
+                    console.log("ALL DEVICE DATA PROCESSED : ");
+                    const jsonResponse = {
+                        event: {
+                            header: {
+                                messageId: generateMessageID(),
+                                name: 'Discover.Response',
+                                namespace: 'Alexa.Discovery',
+                                payloadVersion: '3',
+                            },
+                            payload: {
+                                endpoints: DeviceNodeInfoList.info,
+
+                            },
+                        }
+                    };
+                    callback_getNodesFromDeviceTable(null, jsonResponse);
+                }
+
+            }
+        });
+    }
 }
+function createJsonForLight(deviceName, thingName, roomName, loadName, loadIndex) {
+    return {
+        endpointId: deviceName + "_" + thingName + "_" + loadName,
+        manufacturerName: 'wozart',
+        modelName: 'Aura',
+        friendlyName: roomName + " " + loadName,
+        description: 'A node for control and change brightness for  lights or fans',
+        displayCategories: [
+            'LIGHT'
+        ],
+        cookie: {
+            AuraName: deviceName,
+            AuraThing: thingName,
+            AuraLoad: loadName,
+            AuraNodeIndex: loadIndex,
+            AuraType: "LIGHT"
+        },
+        capabilities: [
+            {
+                type: "AlexaInterface",
+                interface: "Alexa.EndpointHealth",
+                version: "3",
+                properties: {
+                    supported: [
+                        {
+                            name: "connectivity"
+                        }
+                    ],
+                    proactivelyReported: true,
+                    retrievable: true
+                }
+            },
+            {
+                type: 'AlexaInterface',
+                interface: 'Alexa',
+                version: '3'
+            },
+            {
+                type: 'AlexaInterface',
+                interface: 'Alexa.PowerController',
+                version: '3',
+                properties: {
+                    supported: [{
+                        name: 'powerState'
+                    }],
+                    proactivelyReported: true,
+                    retrievable: true
+                }
+            },
+            {
+                type: "AlexaInterface",
+                interface: "Alexa.PowerLevelController",
+                version: "3",
+                properties: {
+                    supported: [
+                        {
+                            name: "powerLevel"
+                        }
+                    ],
+                    proactivelyReported: true,
+                    retrievable: true
+                }
+            },
+            {
+                type: "AlexaInterface",
+                interface: "Alexa.PercentageController",
+                version: "3",
+                properties: {
+                    supported: [
+                        {
+                            name: "percentage"
+                        }
+                    ],
+                    proactivelyReported: true,
+                    retrievable: true
+                }
+            },
+            {
+                type: 'AlexaInterface',
+                interface: 'Alexa.BrightnessController',
+                version: '3',
+                properties: {
+                    supported: [{
+                        name: 'brightness'
+                    }],
+                    proactivelyReported: true,
+                    retrievable: true
+                }
+            }
+        ]
 
-
-
+    };
+}
+function createJsonForSwitch(deviceName, thingName, roomName, loadName, loadIndex) {
+    return {
+        endpointId: deviceName + "_" + thingName + "_" + loadName,
+        manufacturerName: 'wozart',
+        modelName: 'Aura',
+        friendlyName: roomName + " " + loadName,
+        description: 'A node for control and change brightness for  lights or fans',
+        displayCategories: [
+            'SWITCH'
+        ],
+        cookie: {
+            AuraName: deviceName,
+            AuraThing: thingName,
+            AuraLoad: loadName,
+            AuraNodeIndex: loadIndex,
+            AuraType: "SWITCH"
+        },
+        capabilities: [
+            {
+                type: "AlexaInterface",
+                interface: "Alexa.EndpointHealth",
+                version: "3",
+                properties: {
+                    supported: [
+                        {
+                            name: "connectivity"
+                        }
+                    ],
+                    proactivelyReported: true,
+                    retrievable: true
+                }
+            },
+            {
+                type: 'AlexaInterface',
+                interface: 'Alexa',
+                version: '3'
+            },
+            {
+                type: 'AlexaInterface',
+                interface: 'Alexa.PowerController',
+                version: '3',
+                properties: {
+                    supported: [{
+                        name: 'powerState'
+                    }],
+                    proactivelyReported: true,
+                    retrievable: true
+                }
+            }
+        ]
+    };
+}
 
 /**
  * This function is invoked when we receive a "Discovery" message from Alexa Smart Home Skill.
@@ -546,9 +737,6 @@ function getNodesFromDeviceTable(deviceList,callback_getNodesFromDeviceTable){
  *     https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#discoverappliancesresponse
  */
 function handleDiscovery(request1, EndReturnFunction) {
-
-
-
     /**
      * Print entire request coming from alexa for handel discovery
      */
@@ -561,393 +749,57 @@ function handleDiscovery(request1, EndReturnFunction) {
      * print access token here
      */
     log("TOKEN ", userAccessToken);
+    GetFaceBookId(userAccessToken, handleGetFaceBookIdFunction);
 
-
-
-    GetFaceBookId(userAccessToken, function (err, FacebookUserId) {
+    function handleGetFaceBookIdFunction(err, FacebookUserId) {
         if (err) {
             console.log("ERROR FB ID  " + " ERROR Check facebook id");
         } else {
             /**
              * Getting facebook id is success now do next stuff
              */
-            console.log("FB ID >> " + FacebookUserId);
+            //console.log("FB ID >> " + FacebookUserId);
             if (typeof FacebookUserId !== 'undefined' && FacebookUserId) {
-
-                getDevicesFromUserTable(FacebookUserId,function(err,deviceArrayList){
-                    if(err){
-                         console.log("ERROR : "+"getDevicesFromUserTable");
-                    }else{
-                        /**
-                         * getting device list from user table is success now do next stuff
-                         */
-                        console.log("deviceArrayList " + JSON.stringify(deviceArrayList));
-                        getNodesFromDeviceTable(deviceArrayList.Devices.L,function(err,data){
-                              if(err){
-                                 console.log("ERROR : "+"getNodesFromDeviceTable");
-                              }else{
-                                 console.log("getNodesFromDeviceTable " + JSON.stringify(data));
-                              }
-                        });
-                       
-
-                    }
-                });
+                getDevicesFromUserTable(FacebookUserId, handleGetDevicesFromUserTableFunction);
             } else {
                 /**
                  * Handel facebook error here
                  */
             }
         }
-    });
-
-
-    /**
-     * call request module to get facebook id
-     * if success then only call dynamoDB functions
-     */
-    // request(options, function (err, res, body) {
-
-    //     /**
-    //      * Get facebook from json format
-    //      */
-    //     let json = JSON.parse(body);
-    //     FacebookUserId = json.id;
-    //     log("FB ID ", FacebookUserId);
-
-    //     var FlagResultComplete = 0;
-    //     if (typeof FacebookUserId !== 'undefined' && FacebookUserId) {
-    //         /**
-    //          * Facebook request got success
-    //          * frame dynamodb table scan header  paramsUserTable to reuest user devices
-    //          */
-    //         var userTableName = 'aura-mobilehub-1808637480-UserTable';
-    //         var paramsUserTable = {
-    //             TableName: userTableName,
-    //             Limit: 3,
-    //             ProjectionExpression: "Devices",
-    //             FilterExpression: "#user_id = :facebook_id",
-    //             ExpressionAttributeNames: {
-    //                 "#user_id": "UserId",
-    //             },
-    //             ExpressionAttributeValues: {
-    //                 ":facebook_id": {
-    //                     "S": "us-east-1:" + FacebookUserId
-    //                 }
-    //             },
-    //         };
-
-    //         /**
-    //          * call scan function
-    //          */
-    //         ddb.scan(paramsUserTable, scanUserTable);
-
-    //         /**
-    //          * scan user table function 
-    //          * on success it will return all the device related to user
-    //          *  
-    //          */
-    //         function scanUserTable(err, data) {
-    //             if (err) {
-    //                 console.error("Unable to scan the table. Error JSON:", JSON.stringify(err, null, 2));
-    //             } else {
-    //                 /**
-    //                  * Scan got success
-    //                  * now take each device get the device details for each device
-    //                  */
-    //                 console.log("User Device Table Scan succeeded.");
-    //                 var json_data = data.Items[0];
-
-    //                 // console.log("Check result : " + JSON.stringify(i));
-
-    //                 var DeviceList = {};
-    //                 var key_name = "names";
-    //                 DeviceList[key_name] = [];
-    //                 for (var len in json_data.Devices.L) {
-    //                     //console.log("Data from the table : " + listLen + " >> " + json_data.Devices.L[listLen].S);
-    //                     var d_name = {
-    //                         Name: json_data.Devices.L[len].S
-    //                     };
-    //                     DeviceList[key_name].push(d_name);
-    //                 }
-
-    //                 for (var listLen in json_data.Devices.L) {
-    //                     ////////////////////Calling device table for Things/////////////////////
-    //                     //console.log("check device list data : " + DeviceList.names[listLen].Name);
-    //                     var deviceTableName = 'aura-mobilehub-1808637480-DevicesTable';
-    //                     var paramsDeviceTable = {
-    //                         TableName: deviceTableName,
-    //                         Limit: 3,
-    //                         ProjectionExpression: "Thing,Loads,Room",
-    //                         FilterExpression: "#device_id = :device_number",
-    //                         ExpressionAttributeNames: {
-    //                             "#device_id": "DeviceId",
-    //                         },
-    //                         ExpressionAttributeValues: {
-    //                             ":device_number": {
-    //                                 "S": DeviceList.names[listLen].Name
-    //                             }
-    //                         },
-    //                     };
-    //                     // paramsDeviceTable.ExpressionAttributeValues.S = json_data.Devices.L[listLen].S;
-    //                     //console.log("Check scanning table : "+ JSON.stringify(paramsDeviceTable));
-    //                     ddb.scan(paramsDeviceTable, scanDeviceTable);
-
-    //                     var loadNames = {};
-    //                     var key_load = "names";
-    //                     loadNames[key_load] = [];
-    //                     var dummyLoadName;
-
-    //                     function scanDeviceTable(err, data) {
-    //                         if (err) {
-    //                             console.error("Unable to scan the table. Error JSON:", JSON.stringify(err, null, 2));
-    //                         } else {
-    //                             //console.log("Device Table Scan succeeded.");
-    //                             var i = data.Items[0];
-    //                             //console.log("printing another data : " + DeviceList.names[listLen].Name);
-    //                             dummyLoadName = {
-    //                                 Name: DeviceList.names[listLen].Name,
-    //                                 Thing: i.Thing.S,
-    //                                 Room: i.Room.S,
-    //                                 Loads: [{
-    //                                     LoadName: i.Loads.L[0].S
-    //                                 },
-    //                                 {
-    //                                     LoadName: i.Loads.L[1].S
-    //                                 },
-    //                                 {
-    //                                     LoadName: i.Loads.L[2].S
-    //                                 },
-    //                                 {
-    //                                     LoadName: i.Loads.L[3].S
-    //                                 }
-    //                                 ]
-    //                             };
-    //                             loadNames[key_load].push(dummyLoadName);
-    //                             FlagResultComplete = FlagResultComplete + 1;
-    //                             console.log("checking for end results : " + FlagResultComplete + " " + json_data.Devices.L.length);
-    //                             if (FlagResultComplete == json_data.Devices.L.length) {
-
-    //                                 var k = 0,
-    //                                     l = 0;
-    //                                 for (k = 0; k < FlagResultComplete; k++) {
-    //                                     for (l = 0; l < 4; l++) {
-    //                                         if (l != 3) {
-    //                                             var dummy_device_list = {
-    //                                                 endpointId: loadNames.names[k].Name + "_" + loadNames.names[k].Thing + "_" + loadNames.names[k].Loads[l].LoadName,
-    //                                                 manufacturerName: 'wozart',
-    //                                                 modelName: 'Aura',
-    //                                                 friendlyName: loadNames.names[k].Room + " " + loadNames.names[k].Loads[l].LoadName,
-    //                                                 description: 'A node for control and change brightness for  lights or fans',
-    //                                                 displayCategories: [
-    //                                                     'LIGHT'
-    //                                                 ],
-    //                                                 cookie: {
-    //                                                     AuraName: loadNames.names[k].Name,
-    //                                                     AuraThing: loadNames.names[k].Thing,
-    //                                                     AuraLoad: loadNames.names[k].Loads[l].LoadName,
-    //                                                     AuraNodeIndex: l + 1,
-    //                                                     AuraType: "LIGHT"
-    //                                                 },
-    //                                                 capabilities: [
-
-    //                                                     {
-    //                                                         type: "AlexaInterface",
-    //                                                         interface: "Alexa.EndpointHealth",
-    //                                                         version: "3",
-    //                                                         properties: {
-    //                                                             supported: [
-    //                                                                 {
-    //                                                                     name: "connectivity"
-    //                                                                 }
-    //                                                             ],
-    //                                                             proactivelyReported: true,
-    //                                                             retrievable: true
-    //                                                         }
-    //                                                     },
-    //                                                     {
-    //                                                         type: 'AlexaInterface',
-    //                                                         interface: 'Alexa',
-    //                                                         version: '3'
-    //                                                     },
-    //                                                     {
-    //                                                         type: 'AlexaInterface',
-    //                                                         interface: 'Alexa.PowerController',
-    //                                                         version: '3',
-    //                                                         properties: {
-    //                                                             supported: [{
-    //                                                                 name: 'powerState'
-    //                                                             }],
-    //                                                             proactivelyReported: true,
-    //                                                             retrievable: true
-    //                                                         }
-    //                                                     },
-    //                                                     {
-    //                                                         type: "AlexaInterface",
-    //                                                         interface: "Alexa.PowerLevelController",
-    //                                                         version: "3",
-    //                                                         properties: {
-    //                                                             supported: [
-    //                                                                 {
-    //                                                                     name: "powerLevel"
-    //                                                                 }
-    //                                                             ],
-    //                                                             proactivelyReported: true,
-    //                                                             retrievable: true
-    //                                                         }
-    //                                                     },
-    //                                                     {
-    //                                                         type: "AlexaInterface",
-    //                                                         interface: "Alexa.PercentageController",
-    //                                                         version: "3",
-    //                                                         properties: {
-    //                                                             supported: [
-    //                                                                 {
-    //                                                                     name: "percentage"
-    //                                                                 }
-    //                                                             ],
-    //                                                             proactivelyReported: true,
-    //                                                             retrievable: true
-    //                                                         }
-    //                                                     },
-    //                                                     {
-    //                                                         type: 'AlexaInterface',
-    //                                                         interface: 'Alexa.BrightnessController',
-    //                                                         version: '3',
-    //                                                         properties: {
-    //                                                             supported: [{
-    //                                                                 name: 'brightness'
-    //                                                             }],
-    //                                                             proactivelyReported: true,
-    //                                                             retrievable: true
-    //                                                         }
-    //                                                     }
-    //                                                 ]
-
-    //                                             };
-    //                                         } else {
-    //                                             var dummy_device_list = {
-    //                                                 endpointId: loadNames.names[k].Name + "_" + loadNames.names[k].Thing + "_" + loadNames.names[k].Loads[l].LoadName,
-    //                                                 manufacturerName: 'wozart',
-    //                                                 modelName: 'Aura',
-    //                                                 friendlyName: loadNames.names[k].Room + " " + loadNames.names[k].Loads[l].LoadName,
-    //                                                 description: 'A node for control switches',
-    //                                                 displayCategories: [
-    //                                                     'SWITCH'
-    //                                                 ],
-    //                                                 cookie: {
-    //                                                     AuraName: loadNames.names[k].Name,
-    //                                                     AuraThing: loadNames.names[k].Thing,
-    //                                                     AuraLoad: loadNames.names[k].Loads[l].LoadName,
-    //                                                     AuraNodeIndex: l + 1,
-    //                                                     AuraType: "SWITCH"
-    //                                                 },
-    //                                                 capabilities: [
-
-    //                                                     {
-    //                                                         type: "AlexaInterface",
-    //                                                         interface: "Alexa.EndpointHealth",
-    //                                                         version: "3",
-    //                                                         properties: {
-    //                                                             supported: [
-    //                                                                 {
-    //                                                                     name: "connectivity"
-    //                                                                 }
-    //                                                             ],
-    //                                                             proactivelyReported: true,
-    //                                                             retrievable: true
-    //                                                         }
-    //                                                     },
-    //                                                     {
-    //                                                         type: 'AlexaInterface',
-    //                                                         interface: 'Alexa',
-    //                                                         version: '3'
-    //                                                     },
-    //                                                     {
-    //                                                         type: 'AlexaInterface',
-    //                                                         interface: 'Alexa.PowerController',
-    //                                                         version: '3',
-    //                                                         properties: {
-    //                                                             supported: [{
-    //                                                                 name: 'powerState'
-    //                                                             }],
-    //                                                             proactivelyReported: true,
-    //                                                             retrievable: true
-    //                                                         }
-    //                                                     }
-    //                                                 ]
-
-    //                                             };
-    //                                         }
-
-    //                                         UserDeviceList[key_user_device].push(dummy_device_list);
-    //                                     }
-
-    //                                 }
-
-    //                                 //console.log("Check UserDEvice list " + JSON.stringify(UserDeviceList));
-    //                                 const response = {
-    //                                     event: {
-    //                                         header: {
-    //                                             messageId: generateMessageID(),
-    //                                             name: 'Discover.Response',
-    //                                             namespace: 'Alexa.Discovery',
-    //                                             payloadVersion: '3',
-    //                                         },
-    //                                         payload: {
-    //                                             endpoints: UserDeviceList.devices,
-
-    //                                         },
-    //                                     }
-    //                                 };
-
-
-
-    //                                 EndReturnFunction(null, response);
-    //                                 //return UserDeviceList;
-    //                             }
-    //                         }
-    //                     }
-    //                     ////////////////////End of Calling device table for Things/////////////////////
-    //                 }
-    //             }
-    //         }
-    //         return true;
-    //     } else {
-    //         return false
-    //     }
-    // });
-
-
+    }
+    function handleGetDevicesFromUserTableFunction(err, deviceArrayList) {
+        if (err) {
+            console.log("ERROR : " + "getDevicesFromUserTable");
+        } else {
+            /**
+             * getting device list from user table is success now do next stuff
+             */
+            //console.log("deviceArrayList " + JSON.stringify(deviceArrayList));
+            getNodesFromDeviceTable(deviceArrayList.Devices.L, handleGetNodesFromDeviceTableFunction);
+        }
+    }
+    function handleGetNodesFromDeviceTableFunction(err, data) {
+        if (err) {
+            console.log("ERROR : " + "getNodesFromDeviceTable");
+        } else {
+            //console.log("getNodesFromDeviceTable " + JSON.stringify(data));
+            EndReturnFunction(null, data);
+        }
+    }
     console.log("End Of The Code Here ");
-
-
 }
 
 function handleCurrentState(request, callback) {
     log('DEBUG', `current state Request: ${JSON.stringify(request)}`);
-    /**
-    * Get the access token.
-    */
 
     const userAccessToken = request.directive.endpoint.scope.token.trim();
 
-    /**
-     * Generic stub for validating the token against your cloud service.
-     * Replace isValidToken() function with your own validation.
-     *
-     * If the token is invliad, return InvalidAccessTokenError
-     *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#invalidaccesstokenerror
-     */
     if (!userAccessToken || !isValidToken(userAccessToken)) {
         log('ERROR', `Discovery Request [${request.directive.header.messageId}] failed. Invalid access token: ${userAccessToken}`);
         callback(null, generateResponse('InvalidAccessTokenError', {}, "Response", "appliance-001"));
         return;
     }
-
-    /**
-  * Grab the applianceId from the request.
-  */
     const applianceId = request.directive.endpoint.endpointId;
     const auraDeviceName = request.directive.endpoint.cookie.AuraName;
     const auraThingName = request.directive.endpoint.cookie.AuraThing;
@@ -955,11 +807,8 @@ function handleCurrentState(request, callback) {
     const auraNodeIndex = request.directive.endpoint.cookie.AuraNodeIndex;
     const auraType = request.directive.endpoint.cookie.AuraType;
 
-    console.log("DEBUF|G auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName + " auraType : " + auraType);
-    /**
-       * If the applianceId is missing, return UnexpectedInformationReceivedError
-       *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#unexpectedinformationreceivederror
-       */
+    //console.log("DEBUF|G auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName + " auraType : " + auraType);
+
     if (!applianceId) {
         log('ERROR', 'No applianceId provided in request');
         const payload = {
@@ -968,16 +817,6 @@ function handleCurrentState(request, callback) {
         callback(null, generateResponse('UnexpectedInformationReceivedError', 'NoDevice', 'NoDevice', payload, "Response", applianceId));
         return;
     }
-
-    /**
-    * At this point the applianceId and accessToken are present in the request.
-    *
-    * Please review the full list of errors in the link below for different states that can be reported.
-    * If these apply to your device/cloud infrastructure, please add the checks and respond with
-    * accurate error messages. This will give the user the best experience and help diagnose issues with
-    * their devices, accounts, and environment
-    *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#error-messages
-    */
     if (!isDeviceOnline(applianceId, userAccessToken)) {
         log('ERROR', `Device offline: ${applianceId}`);
         callback(null, generateResponse('UnexpectedInformationReceivedError', 'NoDevice', 'NoDevice', payload, "Response", applianceId));
@@ -985,7 +824,6 @@ function handleCurrentState(request, callback) {
     }
 
     let response;
-    //log('DEBUG', `current state Request: ${JSON.stringify(request)}`);
     switch (request.directive.header.name) {
         case 'ReportState':
 
@@ -1012,37 +850,18 @@ function handleCurrentState(request, callback) {
                     var data3 = data1.payload;
                     var data4 = JSON.parse(data3);
                     var keys = Object.keys(data4);
-                    //console.log("\r\nfor >> " + keys.length);
-
-
-                    // var deviceState1 = data4[keys[0]]['desired']['state'][0];
-                    // var deviceState2 = data4[keys[0]]['desired']['state'][1];
-                    // var deviceState3 = data4[keys[0]]['desired']['state'][2];
-                    // var deviceState4 = data4[keys[0]]['desired']['state'][3];
-                    // var LedState = data4[keys[0]]['desired']['led'];
-                    // var deviceDimmerValue1 = data4[keys[0]]['desired']['dimm'][0];
-                    // var deviceDimmerValue2 = data4[keys[0]]['desired']['dimm'][1];
-                    // var deviceDimmerValue3 = data4[keys[0]]['desired']['dimm'][2];
-                    // var deviceDimmerValue4 = data4[keys[0]]['desired']['dimm'][3];
-
-
-                    var currentState = data4[keys[0]]['desired']['state'][auraNodeIndex - 1];
-                    var currentDimmerValue = data4[keys[0]]['desired']['dimm'][auraNodeIndex - 1];
-                    console.log("DEBUG " + " auraNodeIndex " + auraNodeIndex + "  currentState " + currentState + " currentDimmerValue " + currentDimmerValue);
+                    var currentState = data4[keys[0]]['desired']['state'][auraNodeIndex];
+                    var currentDimmerValue = data4[keys[0]]['desired']['dimm'][auraNodeIndex];
+                    //console.log("DEBUG " + " auraNodeIndex " + auraNodeIndex + "  currentState " + currentState + " currentDimmerValue " + currentDimmerValue);
                     var currentVal = "Default";
                     if (currentState == 1) {
                         currentVal = "ON";
                     } else {
                         currentVal = "OFF";
                     }
-
-
-
-
-                    //console.log("check before state led " + LedState + " states " + deviceState1 + deviceState2 + deviceState3 + deviceState4 + " dimmers " + deviceDimmerValue1 + deviceDimmerValue2 + deviceDimmerValue3 + deviceDimmerValue4);
                     let callbackResponse = generateStateReportResponse(currentVal, auraType, currentDimmerValue, {}, "appliance-001");
                     //let callbackResponse = generateResponse("Alexa.EndpointHealth", "connectivity", currentVal, {}, "StateReport", "appliance-001");
-                    log('DEBUG', `Before call back: ${JSON.stringify(callbackResponse)}`);
+                    //log('DEBUG', `Before call back: ${JSON.stringify(callbackResponse)}`);
                     callback(null, callbackResponse);
                 } // successful response
             });
@@ -1153,9 +972,9 @@ function handleControl(request, callback) {
                 break;
             }
 
-        case 'IncrementPercentage':
+        case 'AdjustBrightness':
             {
-                const delta = request.payload.deltaPercentage.value;
+                const delta = request.directive.payload.brightnessDelta;
                 if (!delta) {
                     const payload = {
                         faultingParameter: `deltaPercentage: ${delta}`
@@ -1163,7 +982,7 @@ function handleControl(request, callback) {
                     callback(null, generateResponse('UnexpectedInformationReceivedError', 'NoDevice', 'NoDevice', payload, "Response", "application-id"));
                     return;
                 }
-                response = incrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta);
+                response = AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta);
                 break;
             }
 
@@ -1202,48 +1021,21 @@ function handleControl(request, callback) {
  *  https://github.com/alexa/alexa-smarthome-validation
  */
 exports.handler = (request, context, callback) => {
-    //log('DEBUG', `Discovery Start Request: ${JSON.stringify(request)}`);
+    log('DEBUG', `Discovery Start Request: ${JSON.stringify(request)}`);
 
     switch (request.directive.header.namespace) {
-        /**
-         * The namespace of 'Alexa.ConnectedHome.Discovery' indicates a request is being made to the Lambda for
-         * discovering all appliances associated with the customer's appliance cloud account.
-         *
-         * For more information on device discovery, please see
-         *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#discovery-messages
-         */
         case 'Alexa.Discovery':
             handleDiscovery(request, callback);
             break;
 
-        /**
-         * The namespace of "Alexa.ConnectedHome.Control" indicates a request is being made to control devices such as
-         * a dimmable or non-dimmable bulb. The full list of Control events sent to your lambda are described below.
-         *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#payload
-         */
+
         case 'Alexa.PowerController':
         case 'Alexa.BrightnessController':
             handleControl(request, callback);
             break;
-
         case 'Alexa':
-            //log("DEBUG",'check alexa state report request');
             handleCurrentState(request, callback);
             break;
-        /**
-         * The namespace of "Alexa.ConnectedHome.Query" indicates a request is being made to query devices about
-         * information like temperature or lock state. The full list of Query events sent to your lambda are described below.
-         *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#payload
-         *
-         * TODO: In this sample, query handling is not implemented. Implement it to retrieve temperature or lock state.
-         */
-        // case 'Alexa.ConnectedHome.Query':
-        //     handleQuery(request, callback);
-        //     break;
-
-        /**
-         * Received an unexpected message
-         */
         default:
             {
                 const errorMessage = `No supported namespace: ${request.directive.header.namespace}`;
@@ -1254,7 +1046,7 @@ exports.handler = (request, context, callback) => {
 };
 
 
-function updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controleValue) {
+function updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controleValue, shadowCallBack) {
 
     config.IOT_BROKER_ENDPOINT = "a15bui8ebaqvjn.iot.us-east-1.amazonaws.com"; // also called the REST API endpoint
     config.IOT_BROKER_REGION = "us-east-1"; // eu-west-1 corresponds to the Ireland Region.  Use us-east-1 for the N. Virginia region
@@ -1301,25 +1093,71 @@ function updateThingShadowStates(auraThingName, auraNodeIndex, controleType, con
 
 
             if (controleType == 1) {
-                if (auraNodeIndex == 1) {
+                if (auraNodeIndex == 0) {
                     deviceState1 = controleValue;
-                } else if (auraNodeIndex == 2) {
+                } else if (auraNodeIndex == 1) {
                     deviceState2 = controleValue;
-                } else if (auraNodeIndex == 3) {
+                } else if (auraNodeIndex == 2) {
                     deviceState3 = controleValue;
-                } else if (auraNodeIndex == 4) {
+                } else if (auraNodeIndex == 3) {
                     deviceState4 = controleValue;
                 }
             } else if (controleType == 2) {
-                if (auraNodeIndex == 1) {
+                if (auraNodeIndex == 0) {
                     deviceDimmerValue1 = controleValue;
-                } else if (auraNodeIndex == 2) {
+                    deviceState1 = 1;
+                } else if (auraNodeIndex == 1) {
                     deviceDimmerValue2 = controleValue;
-                } else if (auraNodeIndex == 3) {
+                    deviceState2 = 1;
+                } else if (auraNodeIndex == 2) {
                     deviceDimmerValue3 = controleValue;
-                } else if (auraNodeIndex == 4) {
+                    deviceState3 = 1;
+                } else if (auraNodeIndex == 3) {
                     deviceDimmerValue4 = controleValue;
+                    deviceState4 = 1;
                 }
+            } else if (controleType == 3) {
+                console.log("CHECK DELTA VALUE : " + controleValue + "ALL PERCENT : " + deviceDimmerValue1 + " " + deviceDimmerValue2 + " " + deviceDimmerValue3 + " " + deviceDimmerValue4 + " ");
+                if (auraNodeIndex == 0) {
+                    deviceDimmerValue1 = deviceDimmerValue1 + controleValue;
+                    if (deviceDimmerValue1 < 0) {
+                        deviceDimmerValue1 = 0;
+                    }
+                    if (deviceDimmerValue1 > 100) {
+                        deviceDimmerValue1 = 100;
+                    }
+
+                    deviceState1 = 1;
+                } else if (auraNodeIndex == 1) {
+                    deviceDimmerValue2 = deviceDimmerValue2 + controleValue;
+                    if (deviceDimmerValue2 < 0) {
+                        deviceDimmerValue2 = 0;
+                    }
+                    if (deviceDimmerValue2 > 100) {
+                        deviceDimmerValue2 = 100;
+                    }
+                    deviceState2 = 1;
+                } else if (auraNodeIndex == 2) {
+                    deviceDimmerValue3 = deviceDimmerValue3 + controleValue;
+                    if (deviceDimmerValue3 < 0) {
+                        deviceDimmerValue3 = 0;
+                    }
+                    if (deviceDimmerValue3 > 100) {
+                        deviceDimmerValue3 = 100;
+                    }
+                    deviceState3 = 1;
+                } else if (auraNodeIndex == 3) {
+                    deviceDimmerValue4 = deviceDimmerValue4 + controleValue;
+                    if (deviceDimmerValue4 < 0) {
+                        deviceDimmerValue4 = 0;
+                    }
+                    if (deviceDimmerValue4 > 100) {
+                        deviceDimmerValue4 = 100;
+                    }
+                    deviceState4 = 1;
+                }
+                console.log("CHECK AFTER VALUE : " + controleValue + "ALL PERCENT : " + deviceDimmerValue1 + " " + deviceDimmerValue2 + " " + deviceDimmerValue3 + " " + deviceDimmerValue4 + " ");
+
             }
 
             if (LedState == 1) {
@@ -1353,7 +1191,22 @@ function updateThingShadowStates(auraThingName, auraNodeIndex, controleType, con
                     // callback("not ok");
                 } else {
                     console.log("updated thing shadow " + config.IOT_THING_NAME + ' to state ' + paramsUpdate.payload);
-                    // callback("ok");
+                    var retState, retLevel;
+                    if (auraNodeIndex == 0) {
+                        retState = deviceState1;
+                        retLevel = deviceDimmerValue1;
+                    } else if (auraNodeIndex == 1) {
+                        retState = deviceState2;
+                        retLevel = deviceDimmerValue2;
+                    } else if (auraNodeIndex == 2) {
+                        retState = deviceState3;
+                        retLevel = deviceDimmerValue3;
+                    } else if (auraNodeIndex == 3) {
+                        retState = deviceState4;
+                        retLevel = deviceDimmerValue4;
+                    }
+
+                    shadowCallBack(null, retLevel);
                 }
 
             });
