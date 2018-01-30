@@ -222,28 +222,28 @@ function generateContoleResponse(value, auraType, currentDimmerValue, payload, e
                         timeOfSample: "2017-02-03T16:20:50.52Z",
                         uncertaintyInMilliseconds: 500
                     }
-                    , 
-                    {
-                        namespace: "Alexa.PowerController",
-                        name: "powerState",
-                        value: value,
-                        timeOfSample: "2017-02-03T16:20:50.52Z",
-                        uncertaintyInMilliseconds: 500
-                    },
-                    {
-                        namespace: "Alexa.PowerLevelController",
-                        name: "powerLevel",
-                        value: currentDimmerValue,
-                        timeOfSample: "2017-02-03T16:20:50.52Z",
-                        uncertaintyInMilliseconds: 500
-                    },
-                    {
-                        namespace: "Alexa.PercentageController",
-                        name: "percentage",
-                        value: currentDimmerValue,
-                        timeOfSample: "2017-02-03T16:20:50.52Z",
-                        uncertaintyInMilliseconds: 500
-                    }
+                    // , 
+                    // {
+                    //     namespace: "Alexa.PowerController",
+                    //     name: "powerState",
+                    //     value: value,
+                    //     timeOfSample: "2017-02-03T16:20:50.52Z",
+                    //     uncertaintyInMilliseconds: 500
+                    // },
+                    // {
+                    //     namespace: "Alexa.PowerLevelController",
+                    //     name: "powerLevel",
+                    //     value: currentDimmerValue,
+                    //     timeOfSample: "2017-02-03T16:20:50.52Z",
+                    //     uncertaintyInMilliseconds: 500
+                    // },
+                    // {
+                    //     namespace: "Alexa.PercentageController",
+                    //     name: "percentage",
+                    //     value: currentDimmerValue,
+                    //     timeOfSample: "2017-02-03T16:20:50.52Z",
+                    //     uncertaintyInMilliseconds: 500
+                    // }
                 ]
             },
             event: {
@@ -359,7 +359,7 @@ function isDeviceOnline(applianceId) {
 }
 
 
-function turnOn(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex) {
+function turnOn(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, applianceId) {
 
     console.log("[TURN ON ]  auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName + " auraNodeIndex " + auraNodeIndex);
     var controleType = 1;
@@ -371,10 +371,10 @@ function turnOn(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex) {
 
         }
     });
-    return generateResponse("Alexa.PowerController", "powerState", "ON", {}, "Response", "appliance-001");
+    return generateResponse("Alexa.PowerController", "powerState", "ON", {}, "Response", applianceId);
 }
 
-function turnOff(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex) {
+function turnOff(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, applianceId) {
     console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
     var controleType = 1;
     var controleState = 0;
@@ -385,10 +385,10 @@ function turnOff(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex) {
 
         }
     });
-    return generateResponse("Alexa.PowerController", "powerState", "OFF", {}, "Response", "appliance-001");
+    return generateResponse("Alexa.PowerController", "powerState", "OFF", {}, "Response", applianceId);
 }
 
-function setBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta) {
+function setBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta, applianceId) {
     console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
     var controleType = 2;
     var controlDim = delta;
@@ -407,10 +407,10 @@ function setBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeInde
     } else {
         auraType = "SWITCH";
     }
-    return generateContoleResponse(controleState, auraType, controlDim, {}, "appliance-001");
+    return generateContoleResponse(controleState, auraType, controlDim, {}, applianceId);
 }
 
-function AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta) {
+function AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta, applianceId) {
     console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
     var controleType = 3;
     var controlDim = delta;
@@ -425,9 +425,9 @@ function AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeI
             } else {
                 auraType = "SWITCH";
             }
-            console.log("SUCCESS on AdjustBrightness : " + data + " " + JSON.stringify(generateContoleResponse(controleState, auraType, data, {}, "appliance-001")));
+            console.log("SUCCESS on AdjustBrightness : " + data + " " + JSON.stringify(generateContoleResponse(controleState, auraType, data, {}, applianceId)));
 
-            return generateContoleResponse(controleState, auraType, data, {}, "appliance-001");
+            return generateContoleResponse(controleState, auraType, data, {}, applianceId);
         }
 
     });
@@ -435,20 +435,20 @@ function AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeI
 
 }
 
-function incrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta) {
+function incrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta, applianceId) {
     console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
     var controleType = 2;
     var controlDim = delta;
     updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controlDim);
-    return generateResponse("Alexa.PowerLevelController", "powerLevel", percentage, {}, "Response", "appliance-001");
+    return generateResponse("Alexa.PowerLevelController", "powerLevel", percentage, {}, "Response", applianceId);
 }
 
-function decrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta) {
+function decrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta, applianceId) {
     console.log("auraDeviceName : " + auraDeviceName + " auraThingName : " + auraThingName + " auraLoadName : " + auraLoadName);
     var controleType = 2;
     var controlDim = delta;
     updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controlDim);
-    return generateResponse("Alexa.PowerLevelController", "powerLevel", percentage, {}, "Response", "appliance-001");
+    return generateResponse("Alexa.PowerLevelController", "powerLevel", percentage, {}, "Response", applianceId);
 }
 
 /**
@@ -859,7 +859,7 @@ function handleCurrentState(request, callback) {
                     } else {
                         currentVal = "OFF";
                     }
-                    let callbackResponse = generateStateReportResponse(currentVal, auraType, currentDimmerValue, {}, "appliance-001");
+                    let callbackResponse = generateStateReportResponse(currentVal, auraType, currentDimmerValue, {}, applianceId);
                     //let callbackResponse = generateResponse("Alexa.EndpointHealth", "connectivity", currentVal, {}, "StateReport", "appliance-001");
                     //log('DEBUG', `Before call back: ${JSON.stringify(callbackResponse)}`);
                     callback(null, callbackResponse);
@@ -951,11 +951,11 @@ function handleControl(request, callback) {
 
     switch (request.directive.header.name) {
         case 'TurnOn':
-            response = turnOn(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex);
+            response = turnOn(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, applianceId);
             break;
 
         case 'TurnOff':
-            response = turnOff(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex);
+            response = turnOff(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, applianceId);
             break;
 
         case 'SetBrightness':
@@ -968,7 +968,7 @@ function handleControl(request, callback) {
                     callback(null, generateResponse('UnexpectedInformationReceivedError', 'NoDevice', 'NoDevice', payload, "Response", "application-id"));
                     return;
                 }
-                response = setBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, percentage);
+                response = setBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, percentage, applianceId);
                 break;
             }
 
@@ -982,7 +982,7 @@ function handleControl(request, callback) {
                     callback(null, generateResponse('UnexpectedInformationReceivedError', 'NoDevice', 'NoDevice', payload, "Response", "application-id"));
                     return;
                 }
-                response = AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta);
+                response = AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta, applianceId);
                 break;
             }
 
@@ -996,7 +996,7 @@ function handleControl(request, callback) {
                     callback(null, generateResponse('UnexpectedInformationReceivedError', 'NoDevice', 'NoDevice', payload, "Response", "application-id"));
                     return;
                 }
-                response = decrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta);
+                response = decrementPercentage(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex, delta, applianceId);
                 break;
             }
 
