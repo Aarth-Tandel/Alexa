@@ -473,7 +473,7 @@ function GetFaceBookId(userAccessToken, callback_GetFaceBookId) {
          * Get facebook from json format
          */
         let json = JSON.parse(body);
-        //log("FB ID ", json.id);
+        log("FB ID ", json.id);
         callback_GetFaceBookId(null, json.id);
     });
 
@@ -850,8 +850,8 @@ function handleCurrentState(request, callback) {
                     var data3 = data1.payload;
                     var data4 = JSON.parse(data3);
                     var keys = Object.keys(data4);
-                    var currentState = data4[keys[0]]['desired']['state'][auraNodeIndex];
-                    var currentDimmerValue = data4[keys[0]]['desired']['dimm'][auraNodeIndex];
+                    var currentState = data4[keys[0]]['reported']['reported'][auraNodeIndex];
+                    var currentDimmerValue = data4[keys[0]]['reported']['dimm'][auraNodeIndex];
                     //console.log("DEBUG " + " auraNodeIndex " + auraNodeIndex + "  currentState " + currentState + " currentDimmerValue " + currentDimmerValue);
                     var currentVal = "Default";
                     if (currentState == 1) {
