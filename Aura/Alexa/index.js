@@ -1,23 +1,7 @@
 'use strict';
-
-/**
- * This sample demonstrates a smart home skill using the publicly available API on Amazon's Alexa platform.
- * For more information about developing smart home skills, see
- *  https://developer.amazon.com/alexa/smart-home
- *
- * For details on the smart home API, please visit
- *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference
- */
-
-/**
- * Mock data for devices to be discovered
- *
- * For more information on the discovered appliance response please see
- *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#discoverappliancesresponse
- */
 var AWS = require('aws-sdk');
 AWS.config.update({
-    region: 'us-east-1'
+    region: ''
 });
 const request = require('request');
 
@@ -222,28 +206,6 @@ function generateContoleResponse(value, auraType, currentDimmerValue, payload, e
                         timeOfSample: "2017-02-03T16:20:50.52Z",
                         uncertaintyInMilliseconds: 500
                     }
-                    // , 
-                    // {
-                    //     namespace: "Alexa.PowerController",
-                    //     name: "powerState",
-                    //     value: value,
-                    //     timeOfSample: "2017-02-03T16:20:50.52Z",
-                    //     uncertaintyInMilliseconds: 500
-                    // },
-                    // {
-                    //     namespace: "Alexa.PowerLevelController",
-                    //     name: "powerLevel",
-                    //     value: currentDimmerValue,
-                    //     timeOfSample: "2017-02-03T16:20:50.52Z",
-                    //     uncertaintyInMilliseconds: 500
-                    // },
-                    // {
-                    //     namespace: "Alexa.PercentageController",
-                    //     name: "percentage",
-                    //     value: currentDimmerValue,
-                    //     timeOfSample: "2017-02-03T16:20:50.52Z",
-                    //     uncertaintyInMilliseconds: 500
-                    // }
                 ]
             },
             event: {
@@ -311,13 +273,7 @@ function getDevicesFromPartnerCloud() {
      * (1) Non-dimmable light bulb
      * (2) Dimmable light bulb
      */
-    //DynamoDbFunctions.ScanDbForDevices();
-    // Promise.all(DynamoDbFunctions.ScanDbForDevices()).then(dataFromDynamoDb(data));
 }
-
-// function dataFromDynamoDb(data){
-//     console.log("Data from dynamoDb : " + data);
-// }
 
 function isValidToken(token) {
     /**
@@ -431,7 +387,6 @@ function AdjustBrightness(auraDeviceName, auraThingName, auraLoadName, auraNodeI
         }
 
     });
-    // return generateResponse("Alexa.BrightnessController", "brightness", controlDim, {}, "Response", "appliance-001");
 
 }
 
@@ -514,16 +469,11 @@ function getDevicesFromUserTable(FacebookUserId, callback_getDevicesFromUserTabl
  * This function takes device List and returns the nodes for each device that user has access
  */
 function getNodesFromDeviceTable(deviceList, callback_getNodesFromDeviceTable) {
-
-
-    //console.log("getNodesFromDeviceTable deviceList : " + JSON.stringify(deviceList));
-    //[{"S":"96500E"},{"S":"96500E"},{"S":"96500E"},{"S":"96500E"}]
     var DeviceNodeInfoList = {};
     var key_name = "info";
     DeviceNodeInfoList[key_name] = [];
     var resultCount = 0;
     for (var listLen in deviceList) {
-        //console.log("FOR LOOP check device list data : " + deviceList[listLen].S);
         var deviceTableName = 'aura-mobilehub-1808637480-DevicesTable';
         var paramsDeviceTable = {
             TableName: deviceTableName,
@@ -828,8 +778,8 @@ function handleCurrentState(request, callback) {
         case 'ReportState':
 
             //response = GetCurrentState(auraDeviceName, auraThingName, auraLoadName, auraNodeIndex);
-            config.IOT_BROKER_ENDPOINT = "a15bui8ebaqvjn.iot.us-east-1.amazonaws.com"; // also called the REST API endpoint
-            config.IOT_BROKER_REGION = "us-east-1"; // eu-west-1 corresponds to the Ireland Region.  Use us-east-1 for the N. Virginia region
+            config.IOT_BROKER_ENDPOINT = "*******.iot.***-****-1.amazonaws.com"; // also called the REST API endpoint
+            config.IOT_BROKER_REGION = "****-*****-1"; // eu-west-1 corresponds to the Ireland Region.  Use us-east-1 for the N. Virginia region
             config.IOT_THING_NAME = auraThingName;
             AWS.config.region = config.IOT_BROKER_REGION;
 
@@ -1048,8 +998,8 @@ exports.handler = (request, context, callback) => {
 
 function updateThingShadowStates(auraThingName, auraNodeIndex, controleType, controleValue, shadowCallBack) {
 
-    config.IOT_BROKER_ENDPOINT = "a15bui8ebaqvjn.iot.us-east-1.amazonaws.com"; // also called the REST API endpoint
-    config.IOT_BROKER_REGION = "us-east-1"; // eu-west-1 corresponds to the Ireland Region.  Use us-east-1 for the N. Virginia region
+    config.IOT_BROKER_ENDPOINT = "*******.iot.us-east-1.amazonaws.com"; // also called the REST API endpoint
+    config.IOT_BROKER_REGION = "us-*****-1"; // eu-west-1 corresponds to the Ireland Region.  Use us-east-1 for the N. Virginia region
     config.IOT_THING_NAME = auraThingName;
     AWS.config.region = config.IOT_BROKER_REGION;
 
@@ -1071,13 +1021,7 @@ function updateThingShadowStates(auraThingName, auraNodeIndex, controleType, con
             var data3 = data1.payload;
             var data4 = JSON.parse(data3);
             var keys = Object.keys(data4);
-            console.log("\r\nfor >> " + keys.length);
-
-            //var stateData = data4[keys[0]];
-            //var reportedData = data4[keys[1]];
-            //var versionData = data4[keys[2]];
-            //var timeData = data4[keys[3]];
-            //var desiredData = data4[keys[0]]['desired'];
+            console.log("\r\nfor >> " + keys.length)
 
             var deviceState1 = data4[keys[0]]['desired']['state'][0];
             var deviceState2 = data4[keys[0]]['desired']['state'][1];
@@ -1212,10 +1156,6 @@ function updateThingShadowStates(auraThingName, auraNodeIndex, controleType, con
             });
 
 
-        } // successful response
+        }
     });
-    // console.log("#######" + data);
-
-
-
 }
